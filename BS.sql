@@ -1,213 +1,151 @@
 SET SERVEROUTPUT ON; 
 
-//FUNCION QUE RETORNA EL PROMEDIO DEL SUELDO DE 12 MESES
-//PARA TRABAJADORES INDEPENDIENTES Y PENSIONADOS
-CREATE OR REPLACE FUNCTION CALCULAR_RENTA(
-    P_SUELDO_ACUMULADO NUMBER,
-    P_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE
-)RETURN NUMBER
-AS
-    V_CALCULO_RENTA NUMBER;
-BEGIN
-    IF(P_TIPO_CLIENTE = 1) THEN
-        V_CALCULO_RENTA := (P_SUELDO_ACUMULADO/3);
-    ELSIF (P_TIPO_CLIENTE =2) THEN
-        V_CALCULO_RENTA := (P_SUELDO_ACUMULADO/24);
-    ELSE
-        V_CALCULO_RENTA := (P_SUELDO_ACUMULADO/12);
-    END IF;
-    RETURN V_CALCULO_RENTA;
-EXCEPTION
-    WHEN ZERO_DIVIDE THEN
-        RETURN 0;
-    WHEN OTHERS THEN
-        RAISE;
-END;
+
+CREATE OR REPLACE PACKAGE BODY INSERSION_TABLAS AS
+    
+
+END INSERSION_TABLAS;
+
+
+
+CREATE OR REPLACE PACKAGE VALIDACION_CREDITOS AS
+
+   
+    FUNCTION CREDITO_HIPOTECARIO(
+        P_INGRESO MONTO_INGRESO.ingreso%TYPE, 
+        P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE
+    )
+    RETURN BOOLEAN;
+
+    
+    FUNCTION CREDITO_CONSUMO(
+        P_INGRESO MONTO_INGRESO.ingreso%TYPE
+    )
+    RETURN BOOLEAN;
+    
+    
+    FUNCTION CREDITO_AUTOMOTRIZ(
+        P_INGRESO MONTO_INGRESO.ingreso%TYPE, 
+        P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE
+    )
+    RETURN BOOLEAN;
+    
+  
+    FUNCTION CREDITO_EMERGENCIA(
+        P_INGRESO MONTO_INGRESO.ingreso%TYPE, 
+        P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE
+    )
+    RETURN BOOLEAN;
+    
+    
+    FUNCTION CREDITO_PAGO_ARANCEL(
+        P_INGRESO MONTO_INGRESO.ingreso%TYPE, 
+        P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE
+    )
+    RETURN BOOLEAN;
+    
+END VALIDACION_CREDITOS;
 /
 
---FUNCIONES QUE VALIDAN ASIGNAR CREDITOS SEGUN LA RENTA Y EL OFICIO
-CREATE OR REPLACE FUNCTION VERIFICAR_CREDITO_HIPOTECARIO(
-P_RENTA NUMBER,
-P_PROFESION VARCHAR2)
-RETURN BOOLEAN
-AS 
-    VERIFICACION BOOLEAN;
-BEGIN
-    IF (UPPER(p_profesion) = UPPER('Trabajadores dependientes') or UPPER(p_profesion) = UPPER('Trabajadores independientes')) AND (p_renta >= 1500000)  THEN
-        VERIFICACION := TRUE;
-    ELSE 
-        VERIFICACION := FALSE;
-    END IF;
-    RETURN VERIFICACION;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
+
+
+CREATE OR REPLACE PACKAGE BODY VALIDACION_CREDITOS AS
+
+    FUNCTION CREDITO_HIPOTECARIO(P_INGRESO MONTO_INGRESO.ingreso%type, P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE)        
+    
+        RETURN BOOLEAN
+    IS
+        
+        
+    BEGIN
+        RETURN (P_INGRESO >= 1500000) AND (P_COD_TIPO_CLIENTE IN (1,2));
+    END CREDITO_HIPOTECARIO;
+    
+    FUNCTION CREDITO_CONSUMO(P_INGRESO MONTO_INGRESO.ingreso%type)        
+    
+        RETURN BOOLEAN
+    IS
+        
+        
+    BEGIN
+        RETURN (P_INGRESO >= 900000);
+    END CREDITO_CONSUMO;
+    
+    
+    FUNCTION CREDITO_AUTOMOTRIZ(P_INGRESO MONTO_INGRESO.ingreso%type, P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE)        
+    
+        RETURN BOOLEAN
+    IS
+        
+        
+    BEGIN
+        RETURN (P_INGRESO >= 900000) AND (P_COD_TIPO_CLIENTE IN (1,2));
+    END CREDITO_AUTOMOTRIZ; 
+         
+         
+     FUNCTION CREDITO_EMERGENCIA(P_INGRESO MONTO_INGRESO.ingreso%type, P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE)        
+    
+        RETURN BOOLEAN
+    IS
+        
+        
+    BEGIN
+        RETURN ((P_INGRESO >= 900000) AND (P_COD_TIPO_CLIENTE IN (1, 2))) OR ((P_INGRESO >= 150000) AND (P_COD_TIPO_CLIENTE IN (3)));
+    
+    END CREDITO_EMERGENCIA; 
+    
+    FUNCTION CREDITO_PAGO_ARANCEL(P_INGRESO MONTO_INGRESO.ingreso%type, P_COD_TIPO_CLIENTE TIPO_CLIENTE.COD_TIPO_CLIENTE%TYPE)        
+    
+        RETURN BOOLEAN
+    IS
+        
+        
+    BEGIN
+        RETURN (P_INGRESO >= 900000) AND (P_COD_TIPO_CLIENTE IN (1,2));
+    END CREDITO_PAGO_ARANCEL;
+         
+           
+    
+END VALIDACION_CREDITOS;
 /
-
-CREATE OR REPLACE FUNCTION VERIFICAR_CREDITO_CONSUMO(
-P_RENTA NUMBER)
-RETURN BOOLEAN
-AS 
-    VERIFICACION BOOLEAN;
-BEGIN
-    IF (p_renta >= 900000 )THEN
-        VERIFICACION := TRUE;
-    ELSE 
-        VERIFICACION := FALSE;
-    END IF;
-    RETURN VERIFICACION;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-/
-
-CREATE OR REPLACE FUNCTION VERIFICAR_CREDITO_AUTOMOTRIZ(
-P_RENTA NUMBER,
-P_PROFESION VARCHAR2
-)
-RETURN BOOLEAN
-AS 
-    VERIFICACION BOOLEAN;
-BEGIN
-    IF( UPPER(p_profesion) = UPPER('Trabajadores dependientes') or UPPER(p_profesion) = UPPER('Trabajadores independientes')) AND (p_renta >= 900000 ) THEN
-        VERIFICACION := TRUE;
-    ELSE 
-        VERIFICACION := FALSE;
-    END IF;
-    RETURN VERIFICACION;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-/
-
-CREATE OR REPLACE FUNCTION VERIFICAR_CREDITO_EMERGENCIA(
-P_RENTA NUMBER,
-P_PROFESION VARCHAR2
-)
-RETURN BOOLEAN
-AS 
-    VERIFICACION BOOLEAN;
-BEGIN
-    IF (UPPER(p_profesion) = UPPER('Trabajadores dependientes') or UPPER(p_profesion) = UPPER('Trabajadores independientes')) AND (p_renta >= 900000)  THEN
-        VERIFICACION := TRUE;
-    ELSIF UPPER(p_profesion) = UPPER('pensionado')AND (p_renta >= 150000) THEN
-        VERIFICACION := TRUE;
-    ELSE 
-        VERIFICACION := FALSE;
-    END IF;
-    RETURN VERIFICACION;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-/     
-
-CREATE OR REPLACE FUNCTION VERIFICAR_CREDITO_PAGO_ARANCEL(
-P_RENTA NUMBER,
-P_PROFESION VARCHAR2
-)
-RETURN BOOLEAN
-AS 
-    VERIFICACION BOOLEAN;
-BEGIN
-    IF( UPPER(p_profesion) = UPPER('Trabajadores dependientes') or UPPER(p_profesion) = UPPER('Trabajadores independientes')) AND (p_renta >= 900000 ) THEN
-        VERIFICACION := TRUE;
-    ELSE 
-        VERIFICACION := FALSE;
-    END IF;
-    RETURN VERIFICACION;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-/ 
 
 DECLARE
-    V_ID_CLIENTE CLIENTE.NRO_CLIENTE%TYPE := &INGRESE_ID_CLIENTE ; --INGRESA POR PARAMETRO
-    V_INGRESO_RENTA NUMBER:= &RENTA;
-    V_PROMEDIO_RENTA NUMBER;
-    v_algun_credito_aprobado BOOLEAN := FALSE;
+
+    V_COD_MONTO_INGRESO MONTO_INGRESO.cod_monto_ingreso%type;
+    V_INGRESO MONTO_INGRESO.ingreso%type;
+    V_N_TIPO_CLIENTE TIPO_CLIENTE.cod_tipo_cliente%type;
     
-    CURSOR CUR_CLIENTE IS
-    SELECT C.nro_cliente AS "ID",
-    C.PNOMBRE||' '|| C.SNOMBRE||' '||C.appaterno||' '||C.apmaterno AS "NOMBRE",
-    tc.cod_tipo_cliente AS "TIPO_CLIENTE",
-    tc.promedio_renta AS "TIPO_DE_CALCULO",
-    tc.nombre_tipo_cliente as "OFICIO"
-    FROM CLIENTE C
-    JOIN TIPO_CLIENTE TC ON TC.COD_TIPO_CLIENTE = C.COD_TIPO_CLIENTE
-    WHERE C.NRO_CLIENTE = V_ID_CLIENTE;
+    V_RESULTADO_HIPOTECARIO BOOLEAN;
+    V_RESULTADO_CONSUMO BOOLEAN;
+    V_RESULTADO_AUTOMOTRIZ BOOLEAN;
+    V_RESULTADO_EMERGENCIA BOOLEAN;
+    V_RESULTADO_ARANCEL BOOLEAN;
+
+      CURSOR CUR_INGRESO IS
+        SELECT 
+            MI.COD_MONTO_INGRESO, MI.INGRESO, TC.COD_TIPO_CLIENTE
+        INTO V_COD_MONTO_INGRESO,V_INGRESO,V_N_TIPO_CLIENTE
+        FROM MONTO_INGRESO MI
+        JOIN CLIENTE C ON C.COD_MONTO_INGRESO = MI.COD_MONTO_INGRESO
+        JOIN TIPO_CLIENTE TC ON TC.COD_TIPO_CLIENTE = C.COD_TIPO_CLIENTE;
+
+
     
-BEGIN
+
     BEGIN
-        FOR I IN CUR_CLIENTE
-        LOOP
-            DBMS_OUTPUT.PUT_LINE('CLIENTE:'||I.NOMBRE);
-            DBMS_OUTPUT.PUT_LINE('OFICIO:'||I.OFICIO);
-            DBMS_OUTPUT.PUT_LINE('CALCULO EN BASE:'||I.TIPO_DE_CALCULO);
+        FOR I IN CUR_INGRESO
+            LOOP
+                
             
-            v_promedio_renta := CALCULAR_RENTA(V_INGRESO_RENTA,I.TIPO_CLIENTE);
-            DBMS_OUTPUT.PUT_LINE('EL PROMEDIO DE RENTA ES:'||round(v_promedio_renta));
             
-            -- Llama a la función VERIFICAR_CREDITO_HIPOTECARIO
-            IF VERIFICAR_CREDITO_HIPOTECARIO(v_promedio_renta, I.OFICIO) THEN
-                DBMS_OUTPUT.PUT_LINE('Crédito Hipotecario: APROBADO.');
-                v_algun_credito_aprobado := TRUE;
-            END IF;
-
-            -- Llama a la función VERIFICAR_CREDITO_CONSUMO
-            IF VERIFICAR_CREDITO_CONSUMO(v_promedio_renta) THEN
-                DBMS_OUTPUT.PUT_LINE('Crédito de Consumo: APROBADO.');
-                v_algun_credito_aprobado := TRUE;
-            END IF;
-
-            -- Llama a la función VERIFICAR_CREDITO_AUTOMOTRIZ
-            IF VERIFICAR_CREDITO_AUTOMOTRIZ(v_promedio_renta, I.OFICIO) THEN
-                DBMS_OUTPUT.PUT_LINE('Crédito Automotriz: APROBADO.');
-                v_algun_credito_aprobado := TRUE;
-            END IF;
-            
-            -- Llama a la función VERIFICAR_CREDITO_EMERGENCIA
-            IF VERIFICAR_CREDITO_EMERGENCIA(v_promedio_renta, I.OFICIO) THEN
-                DBMS_OUTPUT.PUT_LINE('Crédito de Emergencia: APROBADO.');
-                v_algun_credito_aprobado := TRUE;
-            END IF;
-
-            -- Llama a la función VERIFICAR_CREDITO_PAGO_ARANCEL
-            IF VERIFICAR_CREDITO_PAGO_ARANCEL(v_promedio_renta, I.OFICIO) THEN
-                DBMS_OUTPUT.PUT_LINE('Crédito Pago Arancel: APROBADO.');
-                v_algun_credito_aprobado := TRUE;
-            END IF;
-            
-            -- Verificación final: si la bandera nunca cambió a TRUE, no se aprobó nada.
-            IF  v_algun_credito_aprobado= FALSE THEN
-                DBMS_OUTPUT.PUT_LINE('-------------------------------------------');
-                DBMS_OUTPUT.PUT_LINE('No hay créditos disponibles para este cliente.');
-            END IF;
-        END LOOP;
+            END LOOP;
         
-        -- Si el cursor no devolvió ningún registro
-        IF NOT CUR_CLIENTE%FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('Error: No se encontró el cliente con ID: ' || V_ID_CLIENTE);
-        END IF;
-        
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('Error: No se encontraron datos para el cliente.');
-        WHEN TOO_MANY_ROWS THEN
-            DBMS_OUTPUT.PUT_LINE('Error: Se encontraron múltiples clientes con el mismo ID.');
-        WHEN VALUE_ERROR THEN
-            DBMS_OUTPUT.PUT_LINE('Error: Valor ingresado no válido.');
-        WHEN ZERO_DIVIDE THEN
-            DBMS_OUTPUT.PUT_LINE('Error: División por cero en el cálculo de renta.');
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error inesperado: ' || SQLERRM);
-    END;
+    
 END;
 /
+
+
+
 
 
 CREATE TABLE MONTO_INGRESO(
@@ -218,6 +156,18 @@ CREATE TABLE MONTO_INGRESO(
     UNIQUE(NRO_CLIENTE)
 )
 
+
+CREATE TABLE ESTADO_CREDITO_CLIENTE (
+    COD_ESTADO_CREDITO_CLIENTE NUMBER(5,0) PRIMARY KEY,
+    ESTADO_HIPOTECARIO NUMBER(1,0), //1 = TRUE 0 = FALSE
+    ESTADO_CONSUMO NUMBER(1,0),
+    ESTADO_AUTOMOTRIZ NUMBER(1,0),
+    ESTADO_EMERGENCIA NUMBER(1,0),
+    ESTADO_ARANCEL NUMBER(1,0),
+    NRO_CLIENTE NUMBER(5,0),
+    FOREIGN KEY(NRO_CLIENTE) REFERENCES CLIENTE(NRO_CLIENTE),
+    UNIQUE(NRO_CLIENTE)
+);
 
 CREATE SEQUENCE SEQ_ID_MONTO_INGRESO
 START WITH 1      
@@ -231,9 +181,13 @@ BEFORE INSERT ON MONTO_INGRESO
         BEGIN 
             IF :NEW.COD_MONTO_INGRESO IS NULL THEN
                 SELECT SEQ_ID_MONTO_INGRESO.NEXTVAL 
-                INTO :NEW.COD_MONTO_INGRESO;
+                INTO :NEW.COD_MONTO_INGRESO
+                FROM DUAL; //<--SOLO PARA SINTAXIS
             END IF;
 END;
+
+
+
 
 
 

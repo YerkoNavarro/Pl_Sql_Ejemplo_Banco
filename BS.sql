@@ -188,20 +188,24 @@ DECLARE
     V_INGRESO MONTO_INGRESO.ingreso%type;
     V_N_TIPO_CLIENTE TIPO_CLIENTE.cod_tipo_cliente%type;
     
-    V_RESULTADO_HIPOTECARIO BOOLEAN;
-    V_RESULTADO_CONSUMO BOOLEAN;
-    V_RESULTADO_AUTOMOTRIZ BOOLEAN;
-    V_RESULTADO_EMERGENCIA BOOLEAN;
-    V_RESULTADO_ARANCEL BOOLEAN;
+    V_RESULTADO_HIPOTECARIO ESTADO_CREDITO_CLIENTE.ESTADO_HIPOTECARIO%TYPE;
+    V_RESULTADO_CONSUMO ESTADO_CREDITO_CLIENTE.ESTADO_CONSUMO%TYPE;
+    V_RESULTADO_AUTOMOTRIZ ESTADO_CREDITO_CLIENTE.ESTADO_AUTOMOTRIZ%TYPE;
+    V_RESULTADO_EMERGENCIA ESTADO_CREDITO_CLIENTE.ESTADO_EMERGENCIA%TYPE;
+    V_RESULTADO_ARANCEL ESTADO_CREDITO_CLIENTE.ESTADO_ARANCEL%TYPE;
+    
+    
+    V_CONTADOR NUMBER(20);
 
       CURSOR CUR_INGRESO IS
         SELECT 
-            MI.COD_MONTO_INGRESO AS "ID_MONTO:INGRESO"
+            MI.COD_MONTO_INGRESO AS "ID_MONTO_INGRESO"
             , MI.INGRESO AS "INGRESO"
             , TC.COD_TIPO_CLIENTE AS "ID_TIPO_CLIENTE"
-        INTO V_COD_MONTO_INGRESO,V_INGRESO,V_N_TIPO_CLIENTE
+            , c.nro_cliente AS "ID_CLIENTE"
+       
         FROM MONTO_INGRESO MI
-        JOIN CLIENTE C ON C.COD_MONTO_INGRESO = MI.COD_MONTO_INGRESO
+        JOIN CLIENTE C ON C.NRO_CLIENTE = mi.nro_cliente
         JOIN TIPO_CLIENTE TC ON TC.COD_TIPO_CLIENTE = C.COD_TIPO_CLIENTE;
 
 
@@ -210,15 +214,61 @@ DECLARE
     BEGIN
         FOR I IN CUR_INGRESO
             LOOP
-                 V_RESULTADO_HIPOTECARIO:= validacion_creditos.credito_hipotecario(I.INGRESO,I.ID_TIPO_CLIENTE);
-                 V_RESULTADO_CONSUMO:= validacion_creditos.credito_consumo(I.INGRESO);
-                 V_RESULTADO_AUTOMOTRIZ := validacion_creditos.credito_automotriz(I.INGRESO,I.ID_TIPO_CLIENTE);
-                 V_RESULTADO_EMERGENCIA:=validacion_creditos.credito_emergencia(I.INGRESO,I.ID_TIPO_CLIENTE);
-                 V_RESULTADO_ARANCEL:= validacion_creditos.credito_pago_arancel(I.INGRESO,I.ID_TIPO_CLIENTE);
-            --HACER COMPATIBLE EL BOOLEAN CON EL NUMBER DE LA TABLA ESTADO CREDITOS
+            
+            --VERIFICO CREDITOS APROBADOS 1 O DESAPROBADOS 0
+                IF(validacion_creditos.credito_hipotecario(I.INGRESO,I.ID_TIPO_CLIENTE)) THEN 
+                    V_RESULTADO_HIPOTECARIO:= 1;
+                    ELSE 
+                        V_RESULTADO_HIPOTECARIO:= 0;
+                    END IF;           
+
+                IF(validacion_creditos.credito_consumo(I.INGRESO)) THEN 
+                        V_RESULTADO_CONSUMO:= 1;
+                    ELSE 
+                        V_RESULTADO_CONSUMO:= 0;
+                    END IF;
+
+                IF(validacion_creditos.credito_automotriz(I.INGRESO,I.ID_TIPO_CLIENTE)) THEN 
+                        V_RESULTADO_AUTOMOTRIZ:= 1;
+                    ELSE 
+                        V_RESULTADO_AUTOMOTRIZ:= 0;
+                    END IF;
+
+                IF(validacion_creditos.credito_emergencia(I.INGRESO,I.ID_TIPO_CLIENTE)) THEN 
+                        V_RESULTADO_EMERGENCIA:= 1;
+                    ELSE 
+                        V_RESULTADO_EMERGENCIA:= 0;
+                    END IF;
+                    
+                IF(validacion_creditos.credito_pago_arancel(I.INGRESO,I.ID_TIPO_CLIENTE)) THEN 
+                        V_RESULTADO_ARANCEL:= 1;
+                    ELSE 
+                        V_RESULTADO_ARANCEL:= 0;
+                    END IF;
+                    
+                    
+                    SELECT COUNT(*)
+                        INTO V_CONTADOR
+                        FROM ESTADO_CREDITO_CLIENTE ECC
+                        WHERE ECC.NRO_CLIENTE = I.ID_CLIENTE; -- CUENTA SI ES QUE EXISTE YA EL ID
+                    
+                    IF V_CONTADOR = 0 THEN -- SI ES 0 ES PORQUE NO ESTA EL ID, POR LO TANTO PROCEDE A INSERTAR
+                        INSERSION_TABLAS.INSERTAR_ESTADO_CREDITO_CLIENTE(
+                            p_nro_cliente => I.ID_CLIENTE,
+                            p_hipotecario => V_RESULTADO_HIPOTECARIO,
+                            p_consumo => V_RESULTADO_CONSUMO,
+                            p_automotriz => V_RESULTADO_AUTOMOTRIZ,
+                            p_emergencia => V_RESULTADO_EMERGENCIA,
+                            p_arancel => V_RESULTADO_ARANCEL
+                        );
+                        
+                    END IF;
+                    
+           
             
             END LOOP;
-        
+            COMMIT;
+            DBMS_OUTPUT.PUT_LINE('Proceso completado exitosamente');
     
 END;
 /
@@ -233,7 +283,7 @@ CREATE TABLE MONTO_INGRESO(
     NRO_CLIENTE NUMBER(5,0),
     FOREIGN KEY(NRO_CLIENTE) REFERENCES CLIENTE(NRO_CLIENTE),
     UNIQUE(NRO_CLIENTE)
-)
+);
 
 
 CREATE TABLE ESTADO_CREDITO_CLIENTE (
@@ -246,7 +296,7 @@ CREATE TABLE ESTADO_CREDITO_CLIENTE (
     NRO_CLIENTE NUMBER(5,0),
     FOREIGN KEY(NRO_CLIENTE) REFERENCES CLIENTE(NRO_CLIENTE),
     UNIQUE(NRO_CLIENTE)
-)
+);
 
 CREATE SEQUENCE SEQ_ID_MONTO_INGRESO
 START WITH 1      
@@ -261,15 +311,17 @@ BEFORE INSERT ON MONTO_INGRESO
             IF :NEW.COD_MONTO_INGRESO IS NULL THEN
                 SELECT SEQ_ID_MONTO_INGRESO.NEXTVAL 
                 INTO :NEW.COD_MONTO_INGRESO
-                FROM DUAL; //<--SOLO PARA SINTAXIS
+                FROM DUAL; --SOLO PARA SINTAXIS
             END IF;
 END;
 
 
-CREATE SEQUENCE SEQ_ID_ESTADO_CREDITO_CLIENTE
+CREATE  SEQUENCE SEQ_ID_ESTADO_CREDITO_CLIENTE
 START WITH 1      
 INCREMENT BY 1    
 NOCACHE;
+
+
 
 CREATE OR REPLACE TRIGGER TRG_SEQ_ID_ESTADO_CREDITO_CLIENTE
 BEFORE INSERT ON ESTADO_CREDITO_CLIENTE
@@ -279,10 +331,17 @@ BEFORE INSERT ON ESTADO_CREDITO_CLIENTE
             IF :NEW.COD_ESTADO_CREDITO_CLIENTE IS NULL THEN
                 SELECT SEQ_ID_ESTADO_CREDITO_CLIENTE.NEXTVAL 
                 INTO :NEW.COD_ESTADO_CREDITO_CLIENTE
-                FROM DUAL; //<--SOLO PARA SINTAXIS
+                FROM DUAL; --SOLO PARA SINTAXIS
             END IF;
 END;
 
+
+
+TRUNCATE TABLE ESTADO_CREDITO_CLIENTE;
+
+
+-- DEBE CONTAR CON VALORES LA TABLA MONTO_INGRESO PARA HACER LAS VALIDACIONES
+-- EL SISTEMA YA PROTEGE DE SOBREESCRITURA
 
 
 
